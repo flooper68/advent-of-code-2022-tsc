@@ -1,7 +1,7 @@
 {
   "name": "advent-of-code-2022-tsc",
   "devDependencies": {
-    "ts-node": "^10.9.1",
-    "typescript": "^5.0.4"
+    "typescript": "^5.0.4",
+    "@types/node": "^17.0.14"
   }
 }
