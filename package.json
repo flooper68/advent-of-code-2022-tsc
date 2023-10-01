@@ -1,7 +1,8 @@
 {
   "name": "advent-of-code-2022-tsc",
   "devDependencies": {
-    "typescript": "^5.0.4",
-    "@types/node": "^17.0.14"
+    "@types/node": "^17.0.14",
+    "bun-types": "^1.0.3",
+    "typescript": "^5.0.4"
   }
 }
