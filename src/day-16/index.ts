@@ -203,6 +203,26 @@ function getElapsedTime(path: string[], graph: FloydWarshall) {
   return time;
 }
 
+function getCombinations(arr: string[], k: number): string[][] {
+  let res: string[][] = [];
+
+  function helper(path: string[], start: number) {
+    if (path.length === k) {
+      res.push([...path]);
+      return;
+    }
+
+    for (let i = start; i < arr.length; i++) {
+      path.push(arr[i]);
+      helper(path, i + 1);
+      path.pop();
+    }
+  }
+
+  helper([], 0);
+  return res;
+}
+
 function getAllPossiblePaths(
   path: string[],
   availableNodes: string[],
@@ -232,11 +252,15 @@ function getAllPossiblePaths(
   });
 }
 
-function computeAmount(path: string[], graph: FloydWarshall): number {
+function computeAmount(
+  path: string[],
+  graph: FloydWarshall,
+  maxTime: number
+): number {
   let currentRate = 0;
   let currentNode = path[0];
   let amount = 0;
-  let remainingTime = 30;
+  let remainingTime = maxTime;
 
   for (const node of path.slice(1)) {
     randomlyReportMemory();
@@ -297,6 +321,7 @@ function main() {
   const allReleasableNodes = nodes.filter((valve) => {
     return valve.rate > 0;
   });
+  const allReleasableNodeNames = allReleasableNodes.map((v) => v.name);
 
   console.log(`There is ${allReleasableNodes.length} releasable nodes.`);
 
@@ -305,13 +330,7 @@ function main() {
 
   // We generate all possible paths from node to node that fit in 30 time units.
   const allPaths = withTime(
-    () =>
-      getAllPossiblePaths(
-        startingPath,
-        allReleasableNodes.map((v) => v.name),
-        30,
-        graph
-      ),
+    () => getAllPossiblePaths(startingPath, allReleasableNodeNames, 30, graph),
     "getAllPossiblePaths"
   );
 
@@ -320,7 +339,7 @@ function main() {
   const allPathsWithAmounts = withTime(
     () =>
       allPaths.map((path) => {
-        return computeAmount(path, graph);
+        return computeAmount(path, graph, 30);
       }),
     "computeAmounts"
   );
@@ -335,6 +354,52 @@ function main() {
   );
 
   console.log(maxAmount);
+
+  const twoActorCombinations = getCombinations(
+    allReleasableNodeNames,
+    Math.ceil(allReleasableNodeNames.length / 2)
+  );
+
+  console.log(
+    `There is ${twoActorCombinations.length} two actor combinations.`
+  );
+
+  const max2ActorAmount = withTime(() => {
+    return twoActorCombinations.reduce((max, combo) => {
+      const actor1Values = combo;
+      const actor2Values = allReleasableNodeNames.filter(
+        (val) => !combo.includes(val)
+      );
+
+      const allActor1PathsMax = getAllPossiblePaths(
+        startingPath,
+        actor1Values,
+        26,
+        graph
+      )
+        .map((path) => computeAmount(path, graph, 26))
+        .reduce((max, amount) => {
+          return Math.max(max, amount);
+        }, 0);
+
+      const allActor2PathsMax = getAllPossiblePaths(
+        startingPath,
+        actor2Values,
+        26,
+        graph
+      )
+        .map((path) => computeAmount(path, graph, 26))
+        .reduce((max, amount) => {
+          return Math.max(max, amount);
+        }, 0);
+
+      const totalMax = allActor1PathsMax + allActor2PathsMax;
+
+      return Math.max(max, totalMax);
+    }, 0);
+  }, "max2ActorAmount");
+
+  console.log(max2ActorAmount);
 }
 
 withTime(() => main(), "main");
