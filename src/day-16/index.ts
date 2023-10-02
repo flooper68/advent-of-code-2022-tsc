@@ -206,6 +206,7 @@ function getElapsedTime(path: string[], graph: FloydWarshall) {
 function getAllPossiblePaths(
   path: string[],
   availableNodes: string[],
+  maxTime: number,
   graph: FloydWarshall
 ): string[][] {
   randomlyReportMemory();
@@ -216,7 +217,8 @@ function getAllPossiblePaths(
 
   const elapsedTime = getElapsedTime(path, graph);
 
-  if (elapsedTime > 30) {
+  // We can't go further, because we would exceed the time limit, so it is not worth calculating the rest.
+  if (elapsedTime > maxTime) {
     return [path];
   }
 
@@ -224,6 +226,7 @@ function getAllPossiblePaths(
     return getAllPossiblePaths(
       [...path, node],
       availableNodes.filter((n) => n !== node),
+      maxTime,
       graph
     );
   });
@@ -242,6 +245,7 @@ function computeAmount(path: string[], graph: FloydWarshall): number {
 
     const nextRemainingTime = remainingTime - (distance + 1);
 
+    // Next move would be too long, so we just add the remaining time to the amount.
     if (nextRemainingTime < 0) {
       amount += currentRate * remainingTime;
       return amount;
@@ -276,6 +280,7 @@ function main() {
 
   const nodes = parseInput(realInput);
 
+  // The idea is to compress the graph to problem of paths/distances between nodes.
   const graph = new FloydWarshall(
     nodes.map((v) => {
       return {
@@ -288,19 +293,23 @@ function main() {
 
   withTime(() => graph.computeShortestPaths(), "computeShortestPaths");
 
+  // We remove all nodes that have 0 rate, because they they should never be destinations of any move.
   const allReleasableNodes = nodes.filter((valve) => {
     return valve.rate > 0;
   });
 
   console.log(`There is ${allReleasableNodes.length} releasable nodes.`);
 
+  // According to problem statement, we start from AA.
   const startingPath = ["AA"];
 
+  // We generate all possible paths from node to node that fit in 30 time units.
   const allPaths = withTime(
     () =>
       getAllPossiblePaths(
         startingPath,
         allReleasableNodes.map((v) => v.name),
+        30,
         graph
       ),
     "getAllPossiblePaths"
@@ -311,13 +320,12 @@ function main() {
   const allPathsWithAmounts = withTime(
     () =>
       allPaths.map((path) => {
-        const amount = computeAmount(path, graph);
-
-        return amount;
+        return computeAmount(path, graph);
       }),
     "computeAmounts"
   );
 
+  // Math.max(...) can blow up, so we reduce them one by one
   const maxAmount = withTime(
     () =>
       allPathsWithAmounts.reduce((max, amount) => {
